@@ -3,14 +3,14 @@ from datetime import datetime
 from pathlib import Path
 
 import dash_bootstrap_components as dbc
+import mlflow
 import pandas as pd
 import plotly.graph_objects as go
 from dash import html, no_update
+from mlflow.tracking import MlflowClient
 
-import mlflow
 from app_data_manager.data_manager import DataManager
 from app_data_manager.utils import read_config
-from mlflow.tracking import MlflowClient
 
 # Configuration (same as home page: parameters.yml)
 project_root = Path(__file__).resolve().parents[2]
