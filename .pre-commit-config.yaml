@@ -1,0 +1,28 @@
+repos:
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.12.12 # specify the same version as in uv.lock, but can be different
+  hooks:
+    # Run the linter.
+    - id: ruff-check
+      types_or: [python, pyi] # file types the hook should run on
+      args: [ --fix ]
+    # Run the formatter.
+    - id: ruff-format
+      types_or: [python, pyi]
+
+- repo: local # use the local package version for typing
+  hooks:
+    # Run the linter.
+    - id: ty-check
+      name: ty check
+      entry: uv run ty check src tests
+      language: system
+      types_or: [python, pyi]
+      exclude: ^notebooks/
+      pass_filenames: false
+      
+- repo: https://github.com/kynan/nbstripout
+  rev: 0.9.1
+  hooks:
+    - id: nbstripout

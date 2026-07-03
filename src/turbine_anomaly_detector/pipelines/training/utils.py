@@ -1,0 +1,269 @@
+from typing import Any, Literal
+
+import joblib
+import numpy as np
+import optuna
+import pandas as pd
+from catboost import CatBoostRegressor
+from sklearn.ensemble import RandomForestRegressor as RF
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.preprocessing import StandardScaler
+
+import mlflow
+from turbine_anomaly_detector.common.metrics import compute_metrics
+
+
+def objective(
+    trial: optuna.Trial,
+    x_train: pd.DataFrame,
+    y_train: pd.Series,
+    params: dict[str, Any],
+) -> float:
+    """
+    Optuna objective for CatBoost using eval_model and MLflow child runs.
+    Minimizes cross-validated MAE (cv_mae).
+    """
+    np.random.seed(42)
+
+    # sampling model parameters
+    model = params["optuna_search"]["model"]
+    sampled_model_params = sample_optuna_params(
+        params["optuna_search"]["model_params"][model], trial
+    )
+
+    # ----- 2. Evaluate using your CV evaluator -----
+    eval_results = eval_model(
+        x_train=x_train,
+        y_train=y_train,
+        model_name=model,
+        model_params=sampled_model_params,
+    )
+
+    # ----- 4. Optuna minimizes this -----
+    return eval_results["cv_mape"]
+
+
+# def sample_optuna_params(
+#     model_params: dict[str, Any], trial: optuna.Trial
+# ) -> dict[str, Any]:
+#     """
+#     Samples Optuna hyperparametsr from a trial
+
+#     Parameters:
+#     ----------
+#     model_params:
+#     trial:
+
+#     Returns
+#     ________
+#     Dict[str, Any]
+#         Dictionary mapping parameter names to their sampled values from the trial
+
+#     """
+#     param_grid = {}
+#     # print(model_params.items())
+#     # for param, values in model_params.items():
+#     #     print("param", param)
+#     #     print("values", values)
+#     # Iterate through each parameter in the model configuration
+#     for param, values in model_params.items():
+#         print("param", param)
+#         print("values", values)
+#         # check if parameter has a continuos range definition (with "range" and "log" keys)
+#         # This indicates a numeric parameter that should be sampled from a range
+#         if isinstance(values, dict) and "range" in values and "log" in values:
+#             print('true1')
+#             # check if the parameter type is integer (default is float)
+#             if values.get("type", "float") == "int":
+#                 print('true2')
+#                 # sample integer value from the specified range with optional log scaling
+#                 param_grid[param] = trial.suggest_int(
+#                     param, values["range"][0], values["range"][1], log=values["log"]
+#                 )
+#             else:
+#                 print('true3')
+#                 # sample float value from the specified range with optional log scaling
+#                 # trial.suggest_float("learning_rate", 0.01, 0.3, log=True)
+#                 param_grid[param] = trial.suggest_float(
+#                     param, values["range"][0], values["range"][1], log=values["log"]
+#                 )
+#         elif isinstance(values, list):
+#             print('true4')
+#             # parameter is categorical - sample from a discrete list of possible values
+#             param_grid[param] = trial.suggest_categorical(param, values)
+#         else:
+#             print('true5')
+#             # parameter is a fixed value (int, float, str, bool, etc) - pass through as-is
+#             param_grid[param] = values
+
+#         return param_grid
+
+
+def sample_optuna_params(
+    model_params: dict[str, Any], trial: optuna.Trial
+) -> dict[str, Any]:
+    """
+    Samples Optuna hyperparameters from a trial.
+
+    Parameters
+    ----------
+    model_params : Dict[str, Any]
+        Dictionary mapping parameter names to their definitions. Can be:
+        - Fixed values: int, float, str, bool (e.g., iterations: 50)
+        - Search space: dict with "range", "log", "type" keys (e.g., depth: {range: [3, 10], log: False, type: int})
+        - Categorical: list of values (e.g., loss_function: ["RMSE", "MAE"])
+    trial : optuna.Trial
+        The Optuna trial object used to suggest parameter values during optimization.
+
+    Returns
+    -------
+    Dict[str, Any]
+        Dictionary mapping parameter names to their sampled values from the trial.
+    """
+    param_grid = {}
+    # Iterate through each parameter in the model configuration
+    for param, values in model_params.items():
+        # Check if parameter has a continuous range definition (with "range" and "log" keys)
+        # This indicates a numeric parameter that should be sampled from a range
+        if isinstance(values, dict) and "range" in values and "log" in values:
+            # Check if the parameter type is integer (default is float)
+            if values.get("type", "float") == "int":
+                # Sample integer value from the specified range with optional log scaling
+                param_grid[param] = trial.suggest_int(
+                    param, values["range"][0], values["range"][1], log=values["log"]
+                )
+            else:
+                # Sample float value from the specified range with optional log scaling
+                param_grid[param] = trial.suggest_float(
+                    param, values["range"][0], values["range"][1], log=values["log"]
+                )
+        elif isinstance(values, list):
+            # Parameter is categorical - sample from a discrete list of possible values
+            param_grid[param] = trial.suggest_categorical(param, values)
+        else:
+            # Parameter is a fixed value (int, float, str, bool, etc.) - pass through as-is
+            param_grid[param] = values
+
+    return param_grid
+
+
+def eval_model(  # noqa: PLR0913
+    x_train: pd.DataFrame,
+    y_train: pd.Series,
+    n_splits: int = 3,
+    model_name: Literal["RF", "CatBoost"] = "RF",
+    model_params: dict[str, Any] | None = None,
+    seed: int = 42,
+) -> dict[str, Any]:
+    """
+    Evaluate a time series model using TimeSeriesSplit cross-validation
+    on the training set, then refit on the full train data and evaluate on test.
+    Parameters
+    ----------
+    x_train : pd.DataFrame
+        Training features.
+    y_train : pd.Series
+        Training target.
+    n_splits : int, default=3
+        Number of time-series CV folds.
+    model_name : {'RF','LinReg','CatBoost','LSTM','MLP'}, default='RF'
+        Model identifier.
+    model_params : dict or None
+        Keyword arguments for the selected model.
+    SEED : int, default=42
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    results : dict
+        - 'cv_mae'   : average MAE over CV folds
+        - 'cv_rmse'  : average RMSE over CV folds
+        - 'cv_mape'  : average MAPE over CV folds
+        - 'model'      : fitted final model
+        - 'x_scaler'   : fitted StandardScaler for X features
+    """
+    np.random.seed(seed)
+
+    if model_params is None:
+        model_params = {}
+
+    tscv = TimeSeriesSplit(n_splits=n_splits)
+    cv_mae_list: list[float] = []
+    cv_rmse_list: list[float] = []
+    cv_mape_list: list[float] = []
+
+    # --- Cross-validation ---
+    for fold, (train_idx, val_idx) in enumerate(tscv.split(x_train), 1):
+        x_train_cv = x_train.iloc[train_idx, :].copy()
+        x_val_cv = x_train.iloc[val_idx, :].copy()
+        y_train_cv = y_train.iloc[train_idx].copy()
+        y_val_cv = y_train.iloc[val_idx].copy()
+
+        # Scale features
+        x_scaler = StandardScaler()
+        x_scaled_cv_train = x_scaler.fit_transform(x_train_cv)
+        x_scaled_cv_val = x_scaler.transform(x_val_cv)
+
+        y_train_cv_vals = y_train_cv.values.ravel()
+        y_val_cv_vals = y_val_cv.values.ravel()
+
+        # Construct model
+        if model_name == "RF":
+            model = RF(**model_params)
+        elif model_name == "CatBoost":
+            model = CatBoostRegressor(
+                **model_params, allow_writing_files=False, verbose=False
+            )
+        else:
+            raise ValueError(f"Unknown model_name: {model_name}")
+
+        # fit model and predict on validation set
+        model.fit(x_scaled_cv_train, y_train_cv_vals)
+        y_pred_cv = model.predict(x_scaled_cv_val)
+
+        errors = compute_metrics(y_val_cv_vals, y_pred_cv)
+
+        cv_mae_list.append(float(errors["mae"]))
+        cv_rmse_list.append(float(errors["rmse"]))
+        cv_mape_list.append(float(errors["mape"]))
+
+    cv_mae = round(np.mean(cv_mae_list), 2)
+    cv_rmse = round(np.mean(cv_rmse_list), 2)
+    cv_mape = round(np.mean(cv_mape_list), 2)
+
+    return {
+        "cv_mae": cv_mae,
+        "cv_rmse": cv_rmse,
+        "cv_mape": cv_mape,
+        "model": model,
+        "x_scaler": x_scaler,
+    }
+
+
+class MLModelWrapper(mlflow.pyfunc.PythonModel):
+    """
+    PyFunc model wrapper with bundled scaler.
+    Expects unscaled, feature-engineered DataFrame
+    """
+
+    def __init__(self, model_name: str):
+        self.model_name = model_name.lower()
+
+    def load_context(self, context):
+        # load scaler
+        self.scaler = joblib.load(context.artifacts["scaler"])
+
+        # load model
+        if self.model_name == "catboost":
+            self.model = CatBoostRegressor()
+            self.model.load_model(context.artifacts["model"])
+        elif self.model_name in ["rf", "random_forest"]:
+            self.model = joblib.load(context.artifacts["model"])
+        else:
+            raise ValueError(f"Unknown model_name: {self.model_name}")
+
+    def predict(
+        self, context: mlflow.pyfunc.PythonModelContext, model_input: pd.DataFrame
+    ) -> np.ndarray:  # ty: ignore[invalid-method-override]
+        x_scaled = self.scaler.transform(model_input)
+        return self.model.predict(x_scaled)

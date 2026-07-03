@@ -1,0 +1,205 @@
+feature_eng_pipeline:
+  rename_columns:
+    WindSpeed: "wind_speed"
+    WindDirAbs: "wind_dir_abs"
+    Power: "power"
+    Pitch: "pitch"
+    GenRPM: "gen_rpm"
+    WindDirRel: "wind_dir_rel"
+    NacelTemp: "nacel_temp"
+    GenPh1Temp: "gen_phase_temp"
+    RotorRPM: "rotor_rpm"
+    EnvirTemp: "envir_temp"
+    GearOilTemp: "gear_oil_temp"
+    GearBearTemp: "gear_bear_temp"
+
+  drop_columns: ["Timestamps"]
+
+  diff_outliers_thresholds:
+    wind_speed: 12
+    wind_dir_abs: 70
+    power: 200
+    pitch: 12
+    gen_rpm: 450
+    wind_dir_rel: 9
+    nacel_temp: 40
+    gen_phase_temp: 40
+    rotor_rpm: 20
+    envir_temp: 17
+    gear_oil_temp: 20
+    gear_bear_temp: 35
+
+  smooth_signal:
+      columns: [wind_speed, wind_dir_abs, pitch, gen_rpm, wind_dir_rel, nacel_temp, gen_phase_temp, rotor_rpm, envir_temp, rotor_rpm, envir_temp, gear_oil_temp, gear_bear_temp]
+      window: 3
+      method: mean
+
+  lag_features:
+    gen_rpm: [1, 2, 3]
+    gen_phase_temp: [1, 2, 3]
+    wind_speed: [1, 2, 3]
+
+  rolling_features:
+    gen_rpm:
+      stats: [median]
+      windows: [3, 6]
+    gen_phase_temp:
+      stats: [median]
+      windows: [3, 6]
+    wind_speed:
+      stats: [median]
+      windows: [3, 6]
+    wind_dir_abs:
+      stats: [median]
+      windows: [3, 6]
+    wind_dir_rel:
+      stats: [median]
+      windows: [3, 6]
+    pitch:
+      stats: [median]
+      windows: [3, 6]
+    rotor_rpm:
+      stats: [median]
+      windows: [3, 6]
+
+  target: ["power"]
+
+
+training_pipeline:
+  start_timestamp: '2007-07-29 03:10:00'
+  test_fraction: 0.2
+  n_folds: 3
+  optuna_search:
+    n_trials: 10
+    model: 'CatBoost'
+    model_params:
+      CatBoost:
+        iterations: 10
+        random_seed: 42
+        depth: 
+          range: [5, 12]
+          log: False
+          type: int 
+        learning_rate:
+          range: [0.01, 0.3]
+          log: True
+          type: float
+        l2_leaf_reg:
+          range: [0.1, 10.0]
+          log: True
+          type: float
+        # as an example
+      RandomForest: 
+        n_estimators: 100
+        max_depth:
+          range: [20, 30]
+          log: False
+          type: int
+
+inference_pipeline:
+  batch_size: 100
+  anomaly_error_type: mape
+  rolling_window: 5
+  anomaly_threshold: 9.5
+  predictions_column_name: [predict_power]
+  anomalies_column_name: [anomaly]
+  errors_column_names: [mape, rolling_mape]
+  inference_frequency: 5 # seconds between checks for new data
+  
+monitoring_pipeline:
+  monitored_feature: "GenRPM"
+  wasserstein_threshold: 300
+
+mlflow:
+  prod_experiment_name: prod_model_training
+  registered_model_name: wind_power_predictor
+  model_aliases:
+    candidate: candidate
+    production: champion
+
+
+data_manager:
+  history_data_folder: data/01_raw
+  history_data_filename: df_train_test.parquet
+  inference_data_folder: data/01_raw
+  inference_data_filename: df_prod.parquet
+  sqlite_db_path: data/sqlite/app.db 
+  raw_data_table_name: raw_data 
+  predictions_table_name: predictions 
+  errors_table_name: errors 
+  anomalies_table_name: anomalies 
+  retraining_trigger_table_name: retraining_trigger
+  streaming_frequency: 5 # in seconds
+  
+  raw_data_table_schema:
+    - name: Timestamps
+      type: TEXT
+      primary_key: true
+    - name: WindSpeed
+      type: REAL
+    - name: WindDirAbs
+      type: REAL
+    - name: WindDirRel
+      type: REAL
+    - name: Power
+      type: REAL
+    - name: Pitch
+      type: REAL
+    - name: GenRPM
+      type: REAL
+    - name: RotorRPM
+      type: REAL
+    - name: EnvirTemp
+      type: REAL
+    - name: NacelTemp
+      type: REAL
+    - name: GearOilTemp
+      type: REAL
+    - name: GearBearTemp
+      type: REAL
+    - name: GenPh1Temp
+      type: REAL
+    - name: GenBearTemp
+      type: REAL
+  predictions_table_schema:
+    - name: Timestamps
+      type: TEXT
+      primary_key: true
+      not_null: true
+    - name: predict_power
+      type: REAL
+      not_null: true
+
+  errors_table_schema:
+    - name: Timestamps
+      type: TEXT
+      primary_key: true
+      not_null: true
+    - name: mape
+      type: REAL
+      not_null: true
+    - name: rolling_mape
+      type: REAL
+      not_null: true
+
+  anomalies_table_schema:
+    - name: Timestamps
+      type: TEXT
+      primary_key: true
+      not_null: true
+    - name: anomaly
+      type: REAL
+      not_null: true
+
+  retraining_trigger_table_schema:
+    - name: Timestamps
+      type: TEXT
+      primary_key: true
+      not_null: true
+    - name: wasserstein_distance
+      type: REAL
+      not_null: true
+    - name: retraining_trigger
+      type: INTEGER
+      not_null: true
+

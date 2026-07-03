@@ -1,0 +1,126 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+requires-python = ">=3.12,<3.13"
+name = "turbine_anomaly_detector"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+   "kedro~=1.3.1",
+   "kedro-viz>=12.2.0",
+   "numpy>=1.26,<2",
+   "pandas>=2.2,<3",
+   "pyarrow>=14,<21",
+   "python-dateutil>=2.8,<3",
+   "pyyaml>=6,<7",
+   "scikit-learn>=1.4,<1.5",
+   "catboost>=1.2,<1.3",
+   "optuna>=4,<5",
+   "shap<0.50",
+   "torch>=2.2,<2.3",
+   "torchvision>=0.17,<0.18",
+   "torchaudio>=2.2,<2.3",
+   "mlflow>=3.6,<3.7",
+   "ipython>=8.10,<9",
+   "notebook>=7,<8",
+   "jupyterlab>=4.0,<5",
+   "ipywidgets>=8,<9",
+   "ydata-profiling>=4.16,<5",
+   "matplotlib>=3.8,<4",
+   "seaborn>=0.13,<0.14",
+   "setuptools<70",
+   "fg-data-profiling>=4.19.1",
+   "kedro-datasets>=9.4.0",
+   "dash>=4.3.0",
+   "dash-bootstrap-components>=2.0.4",
+   "pytest>=7.4.4",
+   "pytest-cov>=6.3.0",
+   "ruff>=0.12.12",
+   "ty>=0.0.56",
+   "pre-commit>=4.6.0",
+   "nbstripout>=0.9.1",
+]
+
+[project.scripts]
+"turbine-anomaly-detector" = "turbine_anomaly_detector.__main__:main"
+
+[project.entry-points."kedro.hooks"]
+
+[project.optional-dependencies]
+docs = [
+    "docutils<0.21",
+    "sphinx>=5.3,<7.3",
+    "sphinx_rtd_theme==2.0.0",
+    "nbsphinx==0.8.1",
+    "sphinx-autodoc-typehints==1.20.2",
+    "sphinx_copybutton==0.5.2",
+    "ipykernel>=5.3, <7.0",
+    "Jinja2<3.2.0",
+    "myst-parser>=1.0,<2.1"
+]
+dev = [
+    "pytest-cov>=3,<7",
+    "pytest-mock>=1.7.1, <2.0",
+    "pytest~=7.2",
+    "ruff~=0.12.0"
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "turbine_anomaly_detector.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.kedro]
+package_name = "turbine_anomaly_detector"
+project_name = "turbine-anomaly-detector"
+kedro_init_version = "1.3.1"
+tools = "['Linting', 'Testing', 'Custom Logging', 'Documentation', 'Data Structure']"
+example_pipeline = "False"
+source_dir = "src"
+
+[tool.pytest.ini_options]
+addopts = """
+--cov-report term-missing \
+--cov src/turbine_anomaly_detector -ra"""
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
+exclude_lines = ["pragma: no cover", "raise NotImplementedError"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff]
+line-length = 88
+show-fixes = true
+extend-exclude = [
+    "*.ipynb", # Excludes all Jupyter Notebooks
+    "notebooks/", 
+    "mlflow",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"entrypoints/*.py" = ["E402"]
+
+[tool.ty.src]
+include = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "F",   # Pyflakes
+    "W",   # pycodestyle
+    "E",   # pycodestyle
+    "I",   # isort
+    "UP",  # pyupgrade
+    "PL",  # Pylint
+    "T201", # Print Statement
+]
+ignore = ["E501"]  # Ruff format takes care of line-too-long
+
+[tool.kedro_telemetry]
+project_id = "6ba301cf90de46a5a03dbfcc0258a994"
