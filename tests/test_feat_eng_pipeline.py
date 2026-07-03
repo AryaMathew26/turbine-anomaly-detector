@@ -36,7 +36,7 @@ def test_add_lag_features_creates_expected_columns(sample_df):
 def test_remove_diff_outliers_one_column(dataset_with_outliers):
     result = remove_diff_outliers(
         dataset_with_outliers,
-        diff_thresholds={"power": 30},
+        diff_threshold={"power": 30},
     )
     assert result.notna().all().all()  # make sure no NaN values are introduced
     assert result["power"].iloc[5] != OUTLIER_HIGH  # make sure the outlier is removed
