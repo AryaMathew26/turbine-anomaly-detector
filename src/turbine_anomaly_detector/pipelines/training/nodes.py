@@ -338,7 +338,7 @@ def validate_challenger(
         #     registered_model_name,
         #     candidate_alias,
         # ).version
-        candidate_version = model_version
+        # candidate_version = model_version
 
         try:
             client.delete_registered_model_alias(
@@ -351,7 +351,7 @@ def validate_challenger(
         client.set_registered_model_alias(
             name=registered_model_name,
             alias=production_alias,
-            version=candidate_version,
+            version=model_version,
         )
 
         client.delete_registered_model_alias(registered_model_name, candidate_alias)
