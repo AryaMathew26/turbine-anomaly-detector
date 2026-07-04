@@ -34,3 +34,25 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to DigitalOcean
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            set -e
+            cd turbine-anomaly-detector
+
+            git pull origin main
+            
+            export DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+            export KEDRO_VIZ_URI=http://${{ secrets.DO_HOST }}:4141
+            export MLFLOW_UI_URI=http://${{ secrets.DO_HOST }}:8080
+            docker compose pull
+            docker compose up -d --remove-orphans
