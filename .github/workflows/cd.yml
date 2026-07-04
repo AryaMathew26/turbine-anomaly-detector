@@ -54,5 +54,8 @@ jobs:
             export DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
             export KEDRO_VIZ_URI=http://${{ secrets.DO_HOST }}:4141
             export MLFLOW_UI_URI=http://${{ secrets.DO_HOST }}:8080
+
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
             docker compose pull
             docker compose up -d --remove-orphans
