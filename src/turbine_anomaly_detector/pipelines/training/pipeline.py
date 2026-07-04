@@ -53,7 +53,13 @@ def create_pipeline(**kwargs) -> Pipeline:
             ),
             node(
                 func=validate_challenger,
-                inputs=["x_test", "y_test", "training_results", "params:mlflow"],
+                inputs=[
+                    "x_test",
+                    "y_test",
+                    "training_results",
+                    "model_version",
+                    "params:mlflow",
+                ],
                 outputs=None,
             ),
         ]

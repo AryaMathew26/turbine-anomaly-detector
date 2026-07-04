@@ -1,0 +1,27 @@
+# Version control & IDE
+.git
+.github
+.cursor
+.idea
+
+# Python cache & linting
+.ruff_cache
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+
+# Virtual environment (recreated by uv sync during build)
+.venv
+
+# Kedro viz cache
+.viz
+
+# Docs & notes
+notebooks/
+
+# Misc
+*.ipynb
+.env
+.DS_Store

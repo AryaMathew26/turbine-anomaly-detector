@@ -1,0 +1,97 @@
+services:
+  # =============================================================================
+  # DATA STREAMING SERVICE
+  # =============================================================================
+  app-stream-data:
+    # OR build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: turbine-anomaly-detector:latest
+    command: ["python", "entrypoints/app_stream_data.py"]
+    volumes:
+      - ./data:/app/data
+      - ./conf:/app/conf
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  mlflow_server:
+    image: turbine-anomaly-detector:latest
+    command:
+      - mlflow
+      - server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --backend-store-uri
+      - sqlite:////app/mlflow/mlflow.db
+      - --default-artifact-root
+      - file:///app/mlflow/artifacts
+      - --serve-artifacts
+      - --allowed-hosts
+      - "*"
+      - --cors-allowed-origins
+      - "*"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./mlflow_docker:/app/mlflow
+      - ./data:/app/data
+      - ./conf:/app/conf
+      
+  app-ml-train:
+    image: turbine-anomaly-detector:latest
+    command: ["python", "entrypoints/training.py"]
+    volumes:
+      - ./mlflow_docker:/app/mlflow
+      - ./data:/app/data
+      - ./conf:/app/conf
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow_server:8080
+    depends_on:
+      mlflow_server:
+        condition: service_started
+      app-stream-data:
+        condition: service_started
+
+  app-ml-inference:
+    image: turbine-anomaly-detector:latest
+    command: ["python", "entrypoints/inference_real_time.py"]
+    volumes:
+      - ./mlflow_docker:/app/mlflow
+      - ./data:/app/data
+      - ./conf:/app/conf
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow_server:8080
+    depends_on:
+      app-ml-train:
+        condition: service_completed_successfully
+      mlflow_server:
+        condition: service_started
+
+  app-ui:
+    image: turbine-anomaly-detector:latest
+    command: ["python", "entrypoints/app_ui.py"]  # Run the Dash UI app
+    ports:
+      - "8050:8050"                 # Expose port 8050 for web access
+    volumes:
+      - ./mlflow_docker:/app/mlflow
+      - ./data:/app/data
+      - ./conf:/app/conf
+    environment:
+      - KEDRO_ENV=local
+      - MLFLOW_TRACKING_URI=http://mlflow_server:8080
+      - MLFLOW_UI_URI=${MLFLOW_UI_URI:-http://localhost:8080}
+      - DEBUG=False
+      - KEDRO_VIZ_URI=${KEDRO_VIZ_URI:-http://localhost:4141}
+    depends_on:
+      - mlflow_server
+      - app-stream-data
+
+  kedro-viz:
+    image: turbine-anomaly-detector:latest
+    command: ["kedro", "viz", "run", "--host", "0.0.0.0", "--port", "4141"]
+    ports:
+      - "4141:4141"                 # Expose port 4141 for Kedro Viz UI

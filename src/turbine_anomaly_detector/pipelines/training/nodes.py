@@ -300,6 +300,7 @@ def validate_challenger(
     x_test: pd.DataFrame,
     y_test: pd.Series,
     training_results: dict[str, Any],
+    model_version: str,
     mlflow_params: dict[str, Any],
 ) -> None:
     """
@@ -322,13 +323,35 @@ def validate_challenger(
 
     challenger_mape = training_results["test_metrics"]["test_mape"]
 
+    # if challenger_mape < champion_mape:
+    #     client.delete_registered_model_alias(registered_model_name, production_alias)
+    #     client.set_registered_model_alias(
+    #         name=registered_model_name,
+    #         alias=production_alias,
+    #         version=client.get_model_version_by_alias(
+    #             registered_model_name, candidate_alias
+    #         ).version,
+    #     )
+    #     client.delete_registered_model_alias(registered_model_name, candidate_alias)
     if challenger_mape < champion_mape:
-        client.delete_registered_model_alias(registered_model_name, production_alias)
+        # candidate_version = client.get_model_version_by_alias(
+        #     registered_model_name,
+        #     candidate_alias,
+        # ).version
+        candidate_version = model_version
+
+        try:
+            client.delete_registered_model_alias(
+                registered_model_name,
+                production_alias,
+            )
+        except Exception:
+            pass
+
         client.set_registered_model_alias(
             name=registered_model_name,
             alias=production_alias,
-            version=client.get_model_version_by_alias(
-                registered_model_name, candidate_alias
-            ).version,
+            version=candidate_version,
         )
+
         client.delete_registered_model_alias(registered_model_name, candidate_alias)
