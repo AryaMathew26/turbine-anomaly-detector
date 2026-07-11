@@ -32,6 +32,10 @@ handlers:
     # See https://docs.kedro.org/en/stable/develop/logging/#advanced-logging
     # tracebacks_show_locals: False
 
+  prefect:
+    class: prefect.logging.handlers.APILogHandler
+    level: INFO
+
 loggers:
   kedro:
     level: INFO
@@ -40,4 +44,4 @@ loggers:
     level: INFO
 
 root:
-  handlers: [rich, info_file_handler]
+  handlers: [rich, info_file_handler, prefect]

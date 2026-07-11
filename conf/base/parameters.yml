@@ -69,6 +69,7 @@ training_pipeline:
   start_timestamp: '2007-07-29 03:10:00'
   test_fraction: 0.2
   n_folds: 3
+  train_check_frequency: 1 # in minutes
   optuna_search:
     n_trials: 10
     model: 'CatBoost'
@@ -104,11 +105,12 @@ inference_pipeline:
   predictions_column_name: [predict_power]
   anomalies_column_name: [anomaly]
   errors_column_names: [mape, rolling_mape]
-  inference_frequency: 5 # seconds between checks for new data
+  inference_frequency: 30 # seconds between checks for new data
   
 monitoring_pipeline:
   monitored_feature: "GenRPM"
   wasserstein_threshold: 300
+  monitoring_frequency: 1 # in minutes
 
 mlflow:
   prod_experiment_name: prod_model_training

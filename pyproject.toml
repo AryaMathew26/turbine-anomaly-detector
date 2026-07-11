@@ -41,6 +41,7 @@ dependencies = [
    "ty>=0.0.56",
    "pre-commit>=4.6.0",
    "nbstripout>=0.9.1",
+   "prefect>=3.7.8",
 ]
 
 [project.scripts]

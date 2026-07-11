@@ -35,6 +35,7 @@ def stream_data_to_db() -> None:
         data_manager.init_predictions_db_table()
         data_manager.init_errors_db_table()
         data_manager.init_anomalies_db_table()
+        data_manager.init_trigger_db_table()
 
         # Iterate over each row and insert one at a time
         for i, (idx, row) in enumerate(inference_data.iterrows()):
