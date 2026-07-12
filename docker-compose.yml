@@ -159,5 +159,5 @@ services:
     ports:
       - "4141:4141"     # Expose port 4141 for Kedro Viz UI
       
-  volumes:
-    prefect_db_data:
+volumes:
+  prefect_db_data:
