@@ -4,9 +4,9 @@ services:
   # =============================================================================
   app-stream-data:
     # OR build: .
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     image: ${DOCKERHUB_USERNAME}/turbine-anomaly:latest
     command: ["python", "entrypoints/app_stream_data.py"]
     volumes:
@@ -14,43 +14,6 @@ services:
       - ./conf:/app/conf
     environment:
       - PYTHONUNBUFFERED=1
-    restart: unless-stopped
-
-  prefect-db:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: prefect
-      POSTGRES_PASSWORD: prefect
-      POSTGRES_DB: prefect
-    volumes:
-      - prefect_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U prefect -d prefect"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
-  
-  prefect-server:
-    image: pprefecthq/prefect:3.7.8-python3.12-conda
-    command: prefect server start --host 0.0.0.0
-    ports:
-      - "4200:4200"
-    environment:
-      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@prefect-db:5432/prefect
-      PREFECT_API_URL: ${PREFECT_API_URL} # <--- This, in order to access the Prefect server on DigitalOcean
-      PREFECT_UI_API_URL: ${PREFECT_UI_API_URL} # <--- This
-      PREFECT_UI_URL: ${PREFECT_UI_URL} # <--- This
-    depends_on:
-      prefect-db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:4200/api/health', timeout=2)"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 20s
     restart: unless-stopped
 
   mlflow_server:
@@ -80,59 +43,33 @@ services:
       
   app-ml-train:
     image: ${DOCKERHUB_USERNAME}/turbine-anomaly:latest
-    command: ["python", "entrypoints/prefect/training.py"]
+    command: ["python", "entrypoints/training.py"]
     volumes:
       - ./mlflow_docker:/app/mlflow
       - ./data:/app/data
       - ./conf:/app/conf
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow_server:8080
-      - PREFECT_API_URL=http://prefect-server:4200/api
     depends_on:
       mlflow_server:
         condition: service_started
       app-stream-data:
         condition: service_started
-      prefect-server:
-          condition: service_healthy
 
   app-ml-inference:
     image: ${DOCKERHUB_USERNAME}/turbine-anomaly:latest
-    command: ["python", "entrypoints/prefect/inference.py"]
+    command: ["python", "entrypoints/inference_real_time.py"]
     volumes:
       - ./mlflow_docker:/app/mlflow
       - ./data:/app/data
       - ./conf:/app/conf
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow_server:8080
-      - PREFECT_API_URL=http://prefect-server:4200/api
     depends_on:
       app-ml-train:
-        # condition: service_completed_successfully
-        condition: service_started
+        condition: service_completed_successfully
       mlflow_server:
         condition: service_started
-      prefect-server:
-        condition: service_healthy
-
-  app-ml-monitoring:
-    image: ${DOCKERHUB_USERNAME}/turbine-anomaly:latest
-    command: ["python", "entrypoints/prefect/monitoring.py"]
-    restart: unless-stopped
-    volumes:
-      - ./mlflow_docker:/app/mlflow
-      - ./data:/app/data
-      - ./conf:/app/conf
-    environment:
-      - MLFLOW_TRACKING_URI=http://mlflow_server:8080
-      - PREFECT_API_URL=http://prefect-server:4200/api 
-    depends_on:
-      app-ml-train:
-        condition: service_started
-      mlflow_server:
-        condition: service_started
-      prefect-server:
-        condition: service_healthy
 
   app-ui:
     image: ${DOCKERHUB_USERNAME}/turbine-anomaly:latest
@@ -157,7 +94,4 @@ services:
     image: ${DOCKERHUB_USERNAME}/turbine-anomaly:latest
     command: ["kedro", "viz", "run", "--host", "0.0.0.0", "--port", "4141"]
     ports:
-      - "4141:4141"     # Expose port 4141 for Kedro Viz UI
-      
-  volumes:
-    prefect_db_data:
+      - "4141:4141"                 # Expose port 4141 for Kedro Viz UI
