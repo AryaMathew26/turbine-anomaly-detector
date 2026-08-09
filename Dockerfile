@@ -25,7 +25,7 @@ COPY . .
 # When we run uv sync --frozen, uv checks that these two files still match.
 # If we changed pyproject.toml but forgot to update uv.lock, the command fails.
 # which is good because it prevents Docker or CI from installing unexpected dependency versions.
-RUN uv sync --frozen
+RUN uv sync --frozen --no-dev
 
 # Set Python path and ensure venv is in PATH
 # Adds /app/src to PYTHONPATH, so Python can import your src/package_name package.

@@ -61,5 +61,5 @@ jobs:
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-            docker compose pull
+            docker compose --progress plain --parallel 1 pull
             docker compose up -d --remove-orphans
