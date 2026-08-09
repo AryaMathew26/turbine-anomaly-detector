@@ -54,6 +54,9 @@ jobs:
             export DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
             export KEDRO_VIZ_URI=http://${{ secrets.DO_HOST }}:4141
             export MLFLOW_UI_URI=http://${{ secrets.DO_HOST }}:8080
+            export PREFECT_UI_URL='http://${{ secrets.DO_HOST }}:4200'
+            export PREFECT_API_URL='http://prefect-server:4200/api'
+            export PREFECT_UI_API_URL='http://${{ secrets.DO_HOST }}:4200/api'
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
