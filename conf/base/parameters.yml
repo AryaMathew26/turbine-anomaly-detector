@@ -69,7 +69,7 @@ training_pipeline:
   start_timestamp: '2007-07-29 03:10:00'
   test_fraction: 0.2
   n_folds: 3
-  train_check_frequency: 1 # in minutes
+  train_check_frequency: 10 # in minutes
   optuna_search:
     n_trials: 10
     model: 'CatBoost'
@@ -110,7 +110,7 @@ inference_pipeline:
 monitoring_pipeline:
   monitored_feature: "GenRPM"
   wasserstein_threshold: 300
-  monitoring_frequency: 1 # in minutes
+  monitoring_frequency: 10 # in minutes
 
 mlflow:
   prod_experiment_name: prod_model_training
@@ -131,7 +131,7 @@ data_manager:
   errors_table_name: errors 
   anomalies_table_name: anomalies 
   retraining_trigger_table_name: retraining_trigger
-  streaming_frequency: 5 # in seconds
+  streaming_frequency: 10 # in seconds
   
   raw_data_table_schema:
     - name: Timestamps

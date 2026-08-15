@@ -30,4 +30,5 @@ if __name__ == "__main__":
         name="training-deployment",
         interval=timedelta(minutes=check_frequency_minutes),
         parameters={"config_data_manager": config_data_manager},
+        limit=1,
     )

@@ -28,4 +28,5 @@ if __name__ == "__main__":
     monitoring_flow.serve(
         name="monitoring-deployment",
         interval=timedelta(minutes=monitoring_frequency_minutes),
+        limit=1,
     )
