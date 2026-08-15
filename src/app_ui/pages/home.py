@@ -136,10 +136,10 @@ layout = dbc.Container(
                 ),
                 dbc.Col(
                     [
-                        # automatically trigger a callback function every 5000 milliseconds
+                        # automatically trigger a callback function every 60000 milliseconds
                         dcc.Interval(
                             id="auto-refresh-interval",
-                            interval=5000,
+                            interval=60000,
                             n_intervals=0,
                         ),
                         # share the x-axis between the plots
