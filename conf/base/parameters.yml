@@ -105,7 +105,7 @@ inference_pipeline:
   predictions_column_name: [predict_power]
   anomalies_column_name: [anomaly]
   errors_column_names: [mape, rolling_mape]
-  inference_frequency: 30 # seconds between checks for new data
+  inference_frequency: 120 # seconds between checks for new data
   
 monitoring_pipeline:
   monitored_feature: "GenRPM"
