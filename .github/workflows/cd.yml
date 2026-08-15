@@ -62,7 +62,8 @@ jobs:
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
             for attempt in 1 2 3; do
-              if docker compose --progress plain --parallel 1 pull; then
+              if echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin \
+                && docker compose --progress plain --parallel 1 pull; then
                 break
               fi
 
