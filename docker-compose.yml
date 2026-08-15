@@ -77,6 +77,7 @@ services:
       - ./mlflow_docker:/app/mlflow
       - ./data:/app/data
       - ./conf:/app/conf
+    restart: unless-stopped
       
   app-ml-train:
     image: ${DOCKERHUB_USERNAME}/turbine-anomaly:latest
@@ -152,6 +153,7 @@ services:
     depends_on:
       - mlflow_server
       - app-stream-data
+    restart: unless-stopped
 
   kedro-viz:
     image: ${DOCKERHUB_USERNAME}/turbine-anomaly:latest

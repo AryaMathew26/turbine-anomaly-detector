@@ -1,0 +1,1 @@
+0 * * * * cd /root/turbine-anomaly-detector && /usr/bin/docker compose restart app-ml-inference >> /var/log/inference-restart.log 2>&1
