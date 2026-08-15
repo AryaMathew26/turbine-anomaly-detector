@@ -61,5 +61,17 @@ jobs:
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-            docker compose --progress plain --parallel 1 pull
+            for attempt in 1 2 3; do
+              if docker compose --progress plain --parallel 1 pull; then
+                break
+              fi
+
+              if [ "$attempt" -eq 3 ]; then
+                exit 1
+              fi
+
+              sleep 30
+            done
+
             docker compose up -d --remove-orphans
+
