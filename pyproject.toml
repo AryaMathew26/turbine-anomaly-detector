@@ -44,6 +44,13 @@ docs = [
     "myst-parser>=1.0,<2.1"
 ]
 
+dev = [
+    "pytest-cov>=3,<7",
+    "pytest-mock>=1.7.1, <2.0",
+    "pytest~=7.4.4",
+    "ruff~=0.12.12"
+]
+
 [tool.setuptools.dynamic]
 version = {attr = "turbine_anomaly_detector.__version__"}
 
@@ -125,8 +132,4 @@ dev = [
   "ty>=0.0.56",
   "pre-commit>=4.6.0",
   "nbstripout>=0.9.1",
-  "pytest-cov>=3,<7",
-  "pytest-mock>=1.7.1, <2.0",
-  "pytest~=7.4.4",
-  "ruff~=0.12.12"
 ]
