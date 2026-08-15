@@ -28,4 +28,5 @@ if __name__ == "__main__":
     inference_flow.serve(
         name="inference-deployment",
         interval=timedelta(seconds=inference_frequency_seconds),
+        limit=1,
     )
