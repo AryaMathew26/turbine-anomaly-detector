@@ -13,8 +13,11 @@ RUN apt-get update && apt-get install -y \
 # Install uv
 RUN pip install --no-cache-dir uv
 
-# Copy dependency files
+# Copy dependency metadata first: this becomes the cached dependency layer.
 COPY pyproject.toml uv.lock ./
+
+# This layer changes only when dependencies change.
+RUN uv sync --frozen --no-install-project --no-default-groups
 
 # Copy entire project (needed for uv sync to read version from __init__.py)
 COPY . .
@@ -25,7 +28,7 @@ COPY . .
 # When we run uv sync --frozen, uv checks that these two files still match.
 # If we changed pyproject.toml but forgot to update uv.lock, the command fails.
 # which is good because it prevents Docker or CI from installing unexpected dependency versions.
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-default-groups --no-editable
 
 # Set Python path and ensure venv is in PATH
 # Adds /app/src to PYTHONPATH, so Python can import your src/package_name package.
